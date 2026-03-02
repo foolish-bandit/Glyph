@@ -274,24 +274,12 @@
     triggerEl = document.createElement('div');
     triggerEl.className = 'glyph-trigger';
 
-    if (LOGO_URL) {
-      const img = document.createElement('img');
-      img.src = LOGO_URL;
-      img.alt = 'Glyph';
-      img.onerror = () => {
-        img.remove();
-        const span = document.createElement('span');
-        span.className = 'fallback-icon';
-        span.textContent = '§';
-        triggerEl.appendChild(span);
-      };
-      triggerEl.appendChild(img);
-    } else {
-      const span = document.createElement('span');
-      span.className = 'fallback-icon';
-      span.textContent = '§';
-      triggerEl.appendChild(span);
-    }
+    // Always use text § — the PNG icons are dark-on-transparent,
+    // invisible against the dark trigger background
+    const span = document.createElement('span');
+    span.className = 'fallback-icon';
+    span.textContent = '§';
+    triggerEl.appendChild(span);
 
     triggerEl.addEventListener('click', (e) => {
       e.preventDefault();
@@ -497,7 +485,10 @@
 
     // Google Docs: insert via the hidden text event target iframe
     if (isGoogleDocs) {
-      const docsIframe = document.querySelector('.docs-texteventtarget-iframe');
+      // Try known iframe selectors (Google may rename these)
+      const docsIframe = document.querySelector('.docs-texteventtarget-iframe')
+        || document.querySelector('iframe.docs-texteventtarget-iframe')
+        || document.querySelector('iframe[class*="texteventtarget"]');
       if (docsIframe) {
         try {
           const iframeDoc = docsIframe.contentDocument;
@@ -512,6 +503,19 @@
         } catch (e) {
           // Fall through to clipboard fallback
         }
+      }
+      // Also try any contenteditable on the page
+      const editable = document.querySelector('[contenteditable="true"]');
+      if (editable) {
+        try {
+          editable.focus();
+          const success = document.execCommand('insertText', false, char);
+          if (success) {
+            addToRecent(char);
+            renderAllChars();
+            return;
+          }
+        } catch (e) {}
       }
       // Clipboard fallback for Google Docs
       navigator.clipboard.writeText(char).then(() => {
@@ -713,10 +717,14 @@
   // ─── Google Docs Support ────────────────────────────────────────
   if (isGoogleDocs) {
     document.addEventListener('mouseup', (e) => {
-      const editorEl = e.target.closest(
-        '.kix-appview-editor, .kix-paginateddocumentplugin, .kix-page, .kix-page-content-wrapper'
-      );
-      if (!editorEl) return;
+      // Skip clicks on toolbar, menus, buttons, dialogs, and other UI chrome
+      const tag = e.target.tagName;
+      if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'OPTION') return;
+      if (e.target.closest(
+        '[role="toolbar"], [role="menu"], [role="menubar"], [role="menuitem"], ' +
+        '[role="button"], [role="dialog"], [role="tablist"], [role="tab"], ' +
+        '.docs-titlebar-container, .docs-material-mode-switcher'
+      )) return;
 
       clearTimeout(hideTimeout);
 
@@ -729,7 +737,12 @@
         }
       } catch (err) {}
 
-      activeField = gdocsField || editorEl;
+      // Fallback: look for any contenteditable on the page
+      if (!gdocsField) {
+        gdocsField = document.querySelector('[contenteditable="true"]');
+      }
+
+      activeField = gdocsField || document.body;
       createTrigger();
 
       // Position near the click
