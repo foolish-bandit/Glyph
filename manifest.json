@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Glyph — Legal Symbol Picker",
+  "version": "1.0.0",
+  "description": "A floating legal symbol picker that appears near any text field. Insert §, ¶, ™, ©, and more with one click.",
+  "permissions": ["storage"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "toggle-glyph": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+G",
+        "mac": "Command+Shift+G"
+      },
+      "description": "Toggle Glyph panel"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
