@@ -3,6 +3,13 @@
   if (window.__glyphInjected) return;
   window.__glyphInjected = true;
 
+  // Skip tiny iframes (e.g., Google Docs' input capture iframe)
+  if (window !== window.top) {
+    try {
+      if (window.innerWidth < 100 || window.innerHeight < 100) return;
+    } catch (e) { return; }
+  }
+
   // ─── Character Data ─────────────────────────────────────────────
   const CHARACTERS = [
     { char: '§', name: 'Section', shortcut: 'Alt+0167' },
@@ -45,6 +52,9 @@
   let panelEl = null;
   let shadowHost = null;
   let shadowRoot = null;
+
+  // Google Docs detection (main frame only)
+  const isGoogleDocs = window.location.hostname === 'docs.google.com' && window === window.top;
 
   // ─── Load recent from storage ───────────────────────────────────
   try {
@@ -300,12 +310,35 @@
   function positionTrigger(field) {
     if (!triggerEl) return;
     const rect = field.getBoundingClientRect();
-    let top = rect.top - 2;
-    let left = rect.right - 34;
+    const viewportArea = window.innerWidth * window.innerHeight;
+    const fieldArea = rect.width * rect.height;
+    const fieldIsHuge = fieldArea > viewportArea * 0.5;
+    const fieldIsTiny = rect.width < 10 || rect.height < 10;
+
+    let top, left;
+
+    if (fieldIsHuge || fieldIsTiny) {
+      // Use caret position for oversized or undersized fields
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const caretRect = range.getBoundingClientRect();
+        if (caretRect && (caretRect.top !== 0 || caretRect.left !== 0)) {
+          top = caretRect.top - 2;
+          left = caretRect.right + 8;
+        }
+      }
+    }
+
+    // Default: position at field's top-right corner
+    if (top === undefined || left === undefined) {
+      top = rect.top - 2;
+      left = rect.right - 34;
+    }
 
     // Keep on screen
-    if (top < 4) top = rect.bottom + 4;
-    if (left < 4) left = rect.left;
+    if (top < 4) top = (rect.bottom || top) + 4;
+    if (left < 4) left = rect.left || 4;
     if (left + 28 > window.innerWidth) left = window.innerWidth - 32;
 
     triggerEl.style.top = top + 'px';
@@ -462,6 +495,32 @@
   function insertChar(char) {
     if (!activeField) return;
 
+    // Google Docs: insert via the hidden text event target iframe
+    if (isGoogleDocs) {
+      const docsIframe = document.querySelector('.docs-texteventtarget-iframe');
+      if (docsIframe) {
+        try {
+          const iframeDoc = docsIframe.contentDocument;
+          const iframeBody = iframeDoc && (iframeDoc.querySelector('[contenteditable="true"]') || iframeDoc.body);
+          if (iframeBody) {
+            iframeBody.focus();
+            iframeDoc.execCommand('insertText', false, char);
+            addToRecent(char);
+            renderAllChars();
+            return;
+          }
+        } catch (e) {
+          // Fall through to clipboard fallback
+        }
+      }
+      // Clipboard fallback for Google Docs
+      navigator.clipboard.writeText(char).then(() => {
+        addToRecent(char);
+        renderAllChars();
+      });
+      return;
+    }
+
     activeField.focus();
 
     // Try execCommand first (works for contenteditable)
@@ -566,6 +625,15 @@
     return false;
   }
 
+  function findEditableAncestor(el) {
+    let node = el;
+    while (node && node !== document.body) {
+      if (isEditableField(node)) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
   // ─── Event Listeners ───────────────────────────────────────────
   let hideTimeout = null;
 
@@ -573,6 +641,17 @@
     clearTimeout(hideTimeout);
     if (isEditableField(e.target)) {
       showTrigger(e.target);
+    }
+  }, true);
+
+  // Show trigger on click too (handles already-focused fields and contenteditable children)
+  document.addEventListener('click', (e) => {
+    clearTimeout(hideTimeout);
+    const target = isEditableField(e.target)
+      ? e.target
+      : findEditableAncestor(e.target);
+    if (target) {
+      showTrigger(target);
     }
   }, true);
 
@@ -630,6 +709,40 @@
       scrollTick = true;
     }
   }, true);
+
+  // ─── Google Docs Support ────────────────────────────────────────
+  if (isGoogleDocs) {
+    document.addEventListener('mouseup', (e) => {
+      const editorEl = e.target.closest(
+        '.kix-appview-editor, .kix-paginateddocumentplugin, .kix-page, .kix-page-content-wrapper'
+      );
+      if (!editorEl) return;
+
+      clearTimeout(hideTimeout);
+
+      // Find editing iframe's contenteditable for insertion
+      let gdocsField = null;
+      try {
+        const iframe = document.querySelector('.docs-texteventtarget-iframe');
+        if (iframe && iframe.contentDocument) {
+          gdocsField = iframe.contentDocument.body;
+        }
+      } catch (err) {}
+
+      activeField = gdocsField || editorEl;
+      createTrigger();
+
+      // Position near the click
+      const top = Math.max(4, e.clientY - 34);
+      const left = Math.min(e.clientX + 16, window.innerWidth - 32);
+      triggerEl.style.top = top + 'px';
+      triggerEl.style.left = left + 'px';
+
+      requestAnimationFrame(() => {
+        triggerEl.classList.add('visible');
+      });
+    }, true);
+  }
 
   // Handle keyboard shortcut from background
   try {
