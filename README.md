@@ -1,17 +1,17 @@
-# Glyph — Legal Symbol Picker
+# GLYPH
 
 A Chrome extension that puts 30 legal and typographic symbols one click away from any text field.
 
-![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?logo=googlechrome&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?logo=googlechrome&logoColor=white)](#install)
+[![License](https://img.shields.io/badge/License-MIT-green)](#license)
 
 ## What It Does
 
 Glyph adds a small floating button next to any text input, textarea, or contenteditable field. Click it (or press `Ctrl+Shift+G` / `⌘+Shift+G`) to open a panel with commonly needed symbols:
 
-**Legal:** § ¶ † ‡ © ® ™ ℠  
-**Punctuation:** — – " " ' ' « » … •  
-**Math/Logic:** ∴ ∵ ≈ ≠ ≤ ≥ ± × ÷  
+**Legal:** § ¶ † ‡ © ® ™ ℠
+**Punctuation:** — – " " ' ' « » … •
+**Math/Logic:** ∴ ∵ ≈ ≠ ≤ ≥ ± × ÷
 **Currency & Other:** € £ ¥ ° ¢
 
 Symbols insert directly at your cursor position. No copy-paste required.
@@ -56,17 +56,14 @@ The shortcut should work automatically. If not, go to `chrome://extensions/short
 No data leaves your browser. No analytics. No network requests.
 
 ## Project Structure
-
-```
 ├── manifest.json      # Extension manifest (V3)
 ├── content.js         # Content script — trigger button, symbol panel, insertion logic
 ├── background.js      # Service worker — handles keyboard shortcut commands
 ├── popup.html         # Extension popup (quick-reference)
 └── icons/
-    ├── icon16.png
-    ├── icon48.png
-    └── icon128.png
-```
+├── icon16.png
+├── icon48.png
+└── icon128.png
 
 ## Tech
 
@@ -76,10 +73,18 @@ No data leaves your browser. No analytics. No network requests.
 - `chrome.storage.local` for recently-used tracking
 - Zero dependencies
 
+## Roadmap
+
+- [ ] Chrome Web Store listing
+- [ ] Firefox/Edge ports
+- [ ] Custom symbol sets (user-defined)
+- [ ] Bluebook-specific symbol presets
+- [ ] Snippet expansion (e.g., type `\sec` → §)
+
 ## License
 
 MIT
 
 ---
 
-Built by [Zack](https://github.com/YOUR_USERNAME) • Part of the [Sonomos](https://sonomos.io) ecosystem
+Built by [Zack Brenner](https://github.com/foolish-bandit)
