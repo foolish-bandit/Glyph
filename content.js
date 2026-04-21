@@ -123,6 +123,7 @@
         user-select: none;
         touch-action: none;
         -webkit-user-select: none;
+        outline: none;
       }
       .glyph-trigger.visible {
         opacity: 0.78;
@@ -132,6 +133,11 @@
         border-color: #f0b429;
         background: #222;
         width: 38px;
+      }
+      .glyph-trigger:focus-visible {
+        opacity: 1;
+        border-color: #f0b429;
+        box-shadow: 0 0 0 2px rgba(240,180,41,0.5);
       }
       .glyph-trigger.dragging {
         cursor: grabbing;
@@ -151,6 +157,21 @@
         border-left: none;
         box-shadow: 3px 2px 12px rgba(0,0,0,0.35);
       }
+      .glyph-trigger .grip {
+        position: absolute;
+        top: 50%;
+        width: 2px;
+        height: 14px;
+        background-image: radial-gradient(circle, #555 1px, transparent 1px);
+        background-size: 2px 3px;
+        background-repeat: repeat-y;
+        transform: translateY(-50%);
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      .glyph-trigger-right .grip { left: 4px; }
+      .glyph-trigger-left .grip { right: 4px; }
+      .glyph-trigger:hover .grip { opacity: 1; background-image: radial-gradient(circle, #f0b429 1px, transparent 1px); }
       .glyph-trigger img {
         width: 22px;
         height: 22px;
@@ -310,6 +331,22 @@
         transition: opacity 0.2s ease;
       }
       .glyph-clipboard-flash.visible { opacity: 1; }
+
+      .glyph-cell:focus-visible {
+        outline: none;
+        background: rgba(240,180,41,0.18);
+        border-color: rgba(240,180,41,0.6);
+        color: #f0b429;
+      }
+
+      .glyph-search:focus-visible { outline: none; }
+
+      /* Hide everything while the page is being printed. */
+      @media print {
+        .glyph-trigger, .glyph-panel, .glyph-tooltip, .glyph-clipboard-flash {
+          display: none !important;
+        }
+      }
     `;
     shadowRoot.appendChild(style);
   }
@@ -322,8 +359,16 @@
     triggerEl = document.createElement('div');
     triggerEl.className = 'glyph-trigger glyph-trigger-' + triggerPos.side;
     triggerEl.setAttribute('role', 'button');
+    triggerEl.setAttribute('tabindex', '0');
     triggerEl.setAttribute('aria-label', 'Glyph — legal symbol picker (drag to move, click to open)');
+    triggerEl.setAttribute('aria-haspopup', 'dialog');
+    triggerEl.setAttribute('aria-expanded', 'false');
     triggerEl.title = 'Glyph — drag up/down to move, click to open';
+
+    const grip = document.createElement('span');
+    grip.className = 'grip';
+    grip.setAttribute('aria-hidden', 'true');
+    triggerEl.appendChild(grip);
 
     if (LOGO_URL) {
       const img = document.createElement('img');
@@ -413,6 +458,16 @@
       e.stopPropagation();
     });
 
+    // Keyboard activation (Enter / Space) when the trigger has focus.
+    triggerEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (panelVisible) hidePanel();
+        else showPanel();
+      }
+    });
+
     shadowRoot.appendChild(triggerEl);
   }
 
@@ -434,13 +489,38 @@
 
     panelEl = document.createElement('div');
     panelEl.className = 'glyph-panel';
+    panelEl.setAttribute('role', 'dialog');
+    panelEl.setAttribute('aria-label', 'Glyph symbol picker');
 
     const search = document.createElement('input');
     search.className = 'glyph-search';
     search.type = 'text';
     search.placeholder = 'Search symbols…';
+    search.setAttribute('aria-label', 'Search symbols');
     search.addEventListener('input', () => filterChars(search.value));
-    search.addEventListener('keydown', (e) => e.stopPropagation());
+    search.addEventListener('keydown', (e) => {
+      // Let ESC bubble so the outer handler can close the panel.
+      if (e.key === 'Escape') return;
+      if (e.key === 'Enter') {
+        const first = shadowRoot.querySelector('.glyph-cell');
+        if (first) {
+          e.preventDefault();
+          insertChar(first.textContent);
+        }
+        return;
+      }
+      if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+        const first = shadowRoot.querySelector('.glyph-cell');
+        if (first) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      // Everything else: keep the keypress inside the search box so page-level
+      // shortcuts don't hijack typing.
+      e.stopPropagation();
+    });
     panelEl.appendChild(search);
 
     const recentLabel = document.createElement('div');
@@ -533,17 +613,66 @@
     const cell = document.createElement('div');
     cell.className = 'glyph-cell';
     cell.textContent = data.char;
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('tabindex', '-1');
+    cell.setAttribute('aria-label', data.name);
 
     cell.addEventListener('mouseenter', (e) => showTooltip(e, data));
     cell.addEventListener('mouseleave', hideTooltip);
+    cell.addEventListener('focus', (e) => showTooltip(e, data));
+    cell.addEventListener('blur', hideTooltip);
     // Use mousedown so we insert before the textarea loses focus.
     cell.addEventListener('mousedown', (e) => {
       e.preventDefault();
       e.stopPropagation();
       insertChar(data.char);
     });
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        insertChar(data.char);
+        return;
+      }
+      if (e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        moveCellFocus(cell, e.key);
+        return;
+      }
+      if (e.key === 'Escape') return; // bubble to close panel
+      // Any other printable key: send focus back to search.
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const search = panelEl.querySelector('.glyph-search');
+        if (search) {
+          search.focus();
+          search.value += e.key;
+          filterChars(search.value);
+          e.preventDefault();
+        }
+      }
+    });
 
     return cell;
+  }
+
+  function moveCellFocus(cell, key) {
+    const cells = Array.from(shadowRoot.querySelectorAll('.glyph-cell'));
+    const idx = cells.indexOf(cell);
+    if (idx < 0 || cells.length === 0) return;
+    const cols = 7;
+    let target = idx;
+    if (key === 'ArrowRight') target = Math.min(cells.length - 1, idx + 1);
+    else if (key === 'ArrowLeft') target = Math.max(0, idx - 1);
+    else if (key === 'ArrowDown') target = Math.min(cells.length - 1, idx + cols);
+    else if (key === 'ArrowUp') {
+      target = idx - cols;
+      if (target < 0) {
+        const search = panelEl.querySelector('.glyph-search');
+        if (search) { search.focus(); return; }
+        target = 0;
+      }
+    }
+    cells[target].focus();
   }
 
   function filterChars(query) {
@@ -633,6 +762,12 @@
   }
 
   // ─── Show / Hide Panel ──────────────────────────────────────────
+  function setTriggerHidden(hidden) {
+    if (!triggerEl) return;
+    triggerEl.style.display = hidden ? 'none' : '';
+    if (hidden && panelVisible) hidePanel();
+  }
+
   function showPanel() {
     if (!triggerEl) return;
     createPanel();
@@ -670,6 +805,7 @@
     });
 
     panelVisible = true;
+    if (triggerEl) triggerEl.setAttribute('aria-expanded', 'true');
 
     const searchInput = panelEl.querySelector('.glyph-search');
     if (searchInput) {
@@ -685,6 +821,7 @@
     if (!panelEl) return;
     panelEl.classList.remove('visible');
     panelVisible = false;
+    if (triggerEl) triggerEl.setAttribute('aria-expanded', 'false');
   }
 
   // ─── Field Detection ────────────────────────────────────────────
@@ -735,6 +872,13 @@
       if (panelVisible) hidePanel();
     });
 
+    // Hide the trigger when the page enters fullscreen (videos, slideshows).
+    const handleFullscreen = () => {
+      setTriggerHidden(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreen);
+    document.addEventListener('webkitfullscreenchange', handleFullscreen);
+
     // Close panel on outside click (composedPath pierces the shadow DOM).
     document.addEventListener('mousedown', (e) => {
       if (!panelVisible) return;
@@ -743,13 +887,22 @@
       hidePanel();
     }, true);
 
-    // ESC closes the panel.
-    document.addEventListener('keydown', (e) => {
+    // ESC closes the panel — listen on both document and (once it exists) the
+    // shadow root so ESC works whether focus is in the page or in our UI.
+    const escHandler = (e) => {
       if (e.key === 'Escape' && panelVisible) {
         hidePanel();
         if (isFieldUsable(activeField)) activeField.focus();
+        else if (triggerEl) triggerEl.focus();
       }
-    }, true);
+    };
+    document.addEventListener('keydown', escHandler, true);
+    // shadowRoot is created lazily on first trigger render; attach when ready.
+    const attachShadowEsc = () => {
+      if (shadowRoot) shadowRoot.addEventListener('keydown', escHandler, true);
+      else setTimeout(attachShadowEsc, 100);
+    };
+    attachShadowEsc();
   }
 
   // Keyboard shortcut from background service worker.

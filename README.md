@@ -22,7 +22,8 @@ Symbols insert directly at your cursor position when a text field is focused, an
 - **Drag to reposition** — drag the tab up or down to move it along the edge; drag across the page to snap it to the left or right side. Position is remembered across sites and sessions
 - **Search & filter** — type to find symbols by name or keyword
 - **Recently used** — your most-used symbols surface to the top
-- **Keyboard shortcut** — `Ctrl+Shift+G` (Windows/Linux) or `⌘+Shift+G` (Mac) opens the panel directly
+- **Keyboard-first** — `Ctrl+Shift+G` opens the panel, arrow keys walk the grid, `Enter` inserts, `Esc` closes. The edge tab itself is tab-focusable
+- **Hides when you don't want it** — the tab disappears in fullscreen video and when printing
 - **Works everywhere** — Gmail, Google Docs, Clio, CRMs, any web-based text field
 - **Shadow DOM isolation** — won't break or be broken by page styles
 - **Dark theme** — designed for long sessions
