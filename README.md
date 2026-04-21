@@ -7,21 +7,22 @@ A Chrome extension that puts 30 legal and typographic symbols one click away fro
 
 ## What It Does
 
-Glyph adds a small floating button next to any text input, textarea, or contenteditable field. Click it (or press `Ctrl+Shift+G` / `⌘+Shift+G`) to open a panel with commonly needed symbols:
+Glyph docks a small tab to the edge of every page. It's always there — drag it up or down to reposition it along the edge, drag it past the center of the page to snap it to the other side, or click it (or press `Ctrl+Shift+G` / `⌘+Shift+G`) to open a panel with commonly needed symbols:
 
 **Legal:** § ¶ † ‡ © ® ™ ℠
 **Punctuation:** — – " " ' ' « » … •
 **Math/Logic:** ∴ ∵ ≈ ≠ ≤ ≥ ± × ÷
 **Currency & Other:** € £ ¥ ° ¢
 
-Symbols insert directly at your cursor position. No copy-paste required.
+Symbols insert directly at your cursor position when a text field is focused, and fall back to copying to the clipboard otherwise. No copy-paste gymnastics required.
 
 ## Features
 
-- **Floating trigger button** — appears on text field focus, stays out of the way
+- **Always-on edge tab** — a thin tab hangs on the side of every page, out of the way but always one click away
+- **Drag to reposition** — drag the tab up or down to move it along the edge; drag across the page to snap it to the left or right side. Position is remembered across sites and sessions
 - **Search & filter** — type to find symbols by name or keyword
 - **Recently used** — your most-used symbols surface to the top
-- **Keyboard shortcut** — `Ctrl+Shift+G` (Windows/Linux) or `⌘+Shift+G` (Mac)
+- **Keyboard shortcut** — `Ctrl+Shift+G` (Windows/Linux) or `⌘+Shift+G` (Mac) opens the panel directly
 - **Works everywhere** — Gmail, Google Docs, Clio, CRMs, any web-based text field
 - **Shadow DOM isolation** — won't break or be broken by page styles
 - **Dark theme** — designed for long sessions
@@ -42,16 +43,16 @@ The shortcut should work automatically. If not, go to `chrome://extensions/short
 
 ## Usage
 
-1. Click into any text field on any website
-2. A small **G.** button appears near the field
-3. Click the button or press `Ctrl+Shift+G`
-4. Click any symbol to insert it at your cursor
+1. Open any web page — the Glyph tab docks itself to the edge
+2. Click the tab (or press `Ctrl+Shift+G`) to open the symbol panel
+3. Click any symbol to insert it at your cursor, or to copy it if no field is focused
+4. Drag the tab up or down along the edge to move it; drag across the page to snap to the other side
 5. Use the search bar to filter by name (e.g., "section", "copyright", "dash")
 
 ## Permissions
 
-- **`storage`** — saves your recently-used symbols locally (via `chrome.storage.local`)
-- **`<all_urls>`** — content script needs to run on all pages to detect text fields
+- **`storage`** — saves your recently-used symbols and tab position locally (via `chrome.storage.local`)
+- **`<all_urls>`** — content script needs to run on all pages to render the edge tab
 
 No data leaves your browser. No analytics. No network requests.
 
